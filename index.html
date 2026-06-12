@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏆 2026 世界杯下注管理系统 (波胆多选快捷版)</title>
+    <title>🏆 2026 世界杯下注管理系统 (高效版)</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
@@ -22,34 +22,32 @@
 
     <main class="max-w-7xl mx-auto px-4 mt-6 space-y-6">
 
-        <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="bg-white p-5 rounded-2xl shadow-xs border border-gray-100 flex flex-col justify-between">
+        <section class="grid grid-cols-3 gap-3 md:gap-4 overflow-x-auto whitespace-nowrap">
+            <div class="bg-white p-4 md:p-5 rounded-2xl shadow-xs border border-gray-100 flex flex-col justify-between min-w-[110px]">
                 <div>
-                    <p class="text-sm text-gray-500 font-medium">本周应收 / 应付 (周一结账)</p>
-                    <p id="weekly-p&l" class="text-2xl font-black text-gray-700 mt-2">RM 0.00</p>
+                    <p class="text-[10px] md:text-sm text-gray-500 font-medium truncate">本周应收/应付 (周一结账)</p>
+                    <p id="weekly-p&l" class="text-sm md:text-2xl font-black text-gray-700 mt-1 md:mt-2">RM 0.00</p>
                 </div>
-                <div class="mt-4 flex items-center justify-between text-xs text-gray-400">
-                    <span>每周一清算周期</span>
-                    <button onclick="clearWeekly()" class="bg-slate-950 text-white px-2 py-1 rounded-md hover:bg-slate-800 cursor-pointer">一键清账</button>
+                <div class="mt-2 md:mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[9px] md:text-xs text-gray-400">
+                    <span class="truncate">周一清算</span>
+                    <button onclick="clearWeekly()" class="bg-slate-950 text-white px-1.5 py-0.5 md:px-2 md:py-1 rounded-md hover:bg-slate-800 cursor-pointer text-center text-[9px] md:text-xs w-fit">清账</button>
                 </div>
             </div>
 
-            <div class="bg-white p-5 rounded-2xl shadow-xs border border-gray-100">
-                <p class="text-sm text-gray-500 font-medium">历史累计净损益</p>
-                <p id="total-p&l" class="text-2xl font-black text-gray-700 mt-2">RM 0.00</p>
-                <p id="total-stats" class="text-xs text-gray-400 mt-4">暂无注单数据</p>
+            <div class="bg-white p-4 md:p-5 rounded-2xl shadow-xs border border-gray-100 flex flex-col justify-between min-w-[110px]">
+                <div>
+                    <p class="text-[10px] md:text-sm text-gray-500 font-medium truncate">历史累计净损益</p>
+                    <p id="total-p&l" class="text-sm md:text-2xl font-black text-gray-700 mt-1 md:mt-2">RM 0.00</p>
+                </div>
+                <p id="total-stats" class="text-[9px] md:text-xs text-gray-400 mt-2 md:mt-4 truncate">暂无数据</p>
             </div>
 
-            <div class="bg-white p-5 rounded-2xl shadow-xs border border-gray-100">
-                <p class="text-sm text-gray-500 font-medium">今日损益</p>
-                <p id="today-p&l" class="text-2xl font-black text-gray-700 mt-2">RM 0.00</p>
-                <p class="text-xs text-gray-400 mt-4">根据下注日期统计</p>
-            </div>
-
-            <div class="bg-white p-5 rounded-2xl shadow-xs border border-gray-100">
-                <p class="text-sm text-gray-500 font-medium">暂未结算本金</p>
-                <p id="pending-stake" class="text-2xl font-black text-gray-700 mt-2">RM 0.00</p>
-                <p class="text-xs text-gray-400 mt-4">已适配波胆快捷输入与扣本金逻辑</p>
+            <div class="bg-white p-4 md:p-5 rounded-2xl shadow-xs border border-gray-100 flex flex-col justify-between min-w-[110px]">
+                <div>
+                    <p class="text-[10px] md:text-sm text-gray-500 font-medium truncate">今日损益</p>
+                    <p id="today-p&l" class="text-sm md:text-2xl font-black text-gray-700 mt-1 md:mt-2">RM 0.00</p>
+                </div>
+                <p class="text-[9px] md:text-xs text-gray-400 mt-2 md:mt-4 truncate">按今天下注统计</p>
             </div>
         </section>
 
@@ -60,7 +58,7 @@
             <form id="bet-form" class="space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-gray-500 mb-1">比赛场次</label>
+                        <label class="block text-xs font-semibold text-gray-500 mb-1">比赛场次 (保存后名字会保留)</label>
                         <input type="text" id="match" placeholder="如: 葡萄牙 vs 荷兰" required class="w-full text-sm bg-gray-50 border border-gray-200 rounded-lg p-2.5 focus:outline-blue-500">
                     </div>
                     <div>
@@ -151,9 +149,13 @@
     </main>
 
     <script>
-        let bets = JSON.parse(localStorage.getItem('wc_bets_v3')) || [];
+        let bets = JSON.parse(localStorage.getItem('wc_bets_v4')) || [];
 
-        // 切换玩法界面显示
+        // 数据迁移兼容
+        if(bets.length === 0 && localStorage.getItem('wc_bets_v3')) {
+            bets = JSON.parse(localStorage.getItem('wc_bets_v3'));
+        }
+
         function togglePlayType(type) {
             const normalInputs = document.getElementById('normal-inputs');
             const bodanInputs = document.getElementById('bodan-inputs');
@@ -163,7 +165,6 @@
                 normalInputs.classList.add('hidden');
                 normalDirection.classList.add('hidden');
                 bodanInputs.classList.remove('hidden');
-                // 取消普通框的必填限制
                 document.getElementById('direction').removeAttribute('required');
                 document.getElementById('stake').removeAttribute('required');
                 document.getElementById('odds').removeAttribute('required');
@@ -171,7 +172,6 @@
                 normalInputs.classList.remove('hidden');
                 normalDirection.classList.remove('hidden');
                 bodanInputs.classList.add('hidden');
-                // 恢复普通框的必填
                 document.getElementById('direction').setAttribute('required', '');
                 document.getElementById('stake').setAttribute('required', '');
                 document.getElementById('odds').setAttribute('required', '');
@@ -186,13 +186,11 @@
             const playType = document.getElementById('play-type').value;
 
             if (playType === '波胆/其他') {
-                // 循环处理 3 个波胆输入框
                 for (let i = 1; i <= 3; i++) {
                     const dir = document.getElementById(`bd-dir-${i}`).value.trim();
                     const stake = parseFloat(document.getElementById(`bd-stake-${i}`).value);
                     const odds = parseFloat(document.getElementById(`bd-odds-${i}`).value);
 
-                    // 只要填写了方向和本金就录入
                     if (dir && !isNaN(stake) && !isNaN(odds)) {
                         bets.unshift({
                             id: Date.now() + i,
@@ -207,14 +205,12 @@
                         });
                     }
                 }
-                // 清空波胆特有框
                 for(let i=1; i<=3; i++) {
                     document.getElementById(`bd-dir-${i}`).value = '';
                     document.getElementById(`bd-stake-${i}`).value = '';
                     document.getElementById(`bd-odds-${i}`).value = '';
                 }
             } else {
-                // 普通单次录入逻辑
                 bets.unshift({
                     id: Date.now(),
                     date: dateStr,
@@ -229,8 +225,8 @@
             }
 
             saveAndRender();
-            // 重置表单基础项
-            document.getElementById('match').value = '';
+            
+            // ⭐ 核心优化：这里不再清空 match (比赛场次)，只清空下注方向、赌注和赔率，方便快速连点
             document.getElementById('direction').value = '';
             document.getElementById('stake').value = '';
             document.getElementById('odds').value = '';
@@ -240,7 +236,7 @@
             const bet = bets.find(b => b.id === id);
             if (bet) {
                 bet.score = newScore;
-                localStorage.setItem('wc_bets_v3', JSON.stringify(bets));
+                localStorage.setItem('wc_bets_v4', JSON.stringify(bets));
                 recalculateTotals(); 
             }
         }
@@ -268,14 +264,13 @@
         }
 
         function saveAndRender() {
-            localStorage.setItem('wc_bets_v3', JSON.stringify(bets));
+            localStorage.setItem('wc_bets_v4', JSON.stringify(bets));
             renderDashboard();
         }
 
         function recalculateTotals() {
             let totalPl = 0;
             let todayPl = 0;
-            let pendingStake = 0;
             let winCount = 0;
             let loseCount = 0;
             const todayStr = `${String(new Date().getMonth()+1).padStart(2,'0')}/${String(new Date().getDate()).padStart(2,'0')}`;
@@ -284,7 +279,6 @@
                 let pl = 0;
                 if (bet.status === '全赢') {
                     if (bet.type === '波胆/其他') {
-                        // 波胆赢公式：(赌注 * 赔率) - 赌注 (扣除本金)
                         pl = (bet.stake * bet.odds) - bet.stake;
                     } else {
                         pl = bet.stake * bet.odds;
@@ -295,8 +289,6 @@
                     loseCount++;
                 } else if (bet.status === '走水') {
                     pl = 0;
-                } else {
-                    pendingStake += bet.stake;
                 }
 
                 totalPl += pl;
@@ -317,12 +309,12 @@
             });
 
             document.getElementById('total-p&l').innerText = `${totalPl >= 0 ? '+' : '-'}RM ${Math.abs(totalPl).toFixed(2)}`;
-            document.getElementById('total-p&l').className = `text-2xl font-black mt-2 ${totalPl >= 0 ? 'text-green-600' : 'text-red-600'}`;
+            document.getElementById('total-p&l').className = `text-sm md:text-2xl font-black mt-1 md:mt-2 ${totalPl >= 0 ? 'text-green-600' : 'text-red-600'}`;
             document.getElementById('weekly-p&l').innerText = `${totalPl >= 0 ? '+' : '-'}RM ${Math.abs(totalPl).toFixed(2)}`;
-            document.getElementById('weekly-p&l').className = `text-2xl font-black mt-2 ${totalPl >= 0 ? 'text-green-600' : 'text-red-600'}`;
+            document.getElementById('weekly-p&l').className = `text-sm md:text-2xl font-black mt-1 md:mt-2 ${totalPl >= 0 ? 'text-green-600' : 'text-red-600'}`;
             document.getElementById('today-p&l').innerText = `${todayPl >= 0 ? '+' : '-'}RM ${Math.abs(todayPl).toFixed(2)}`;
-            document.getElementById('today-p&l').className = `text-2xl font-black mt-2 ${todayPl >= 0 ? 'text-green-600' : 'text-red-600'}`;
-            document.getElementById('pending-stake').innerText = `RM ${pendingStake.toFixed(2)}`;
+            document.getElementById('today-p&l').className = `text-sm md:text-2xl font-black mt-1 md:mt-2 ${todayPl >= 0 ? 'text-green-600' : 'text-red-600'}`;
+
             const totalCount = winCount + loseCount;
             const winRate = totalCount > 0 ? ((winCount / totalCount) * 100).toFixed(1) : 0;
             document.getElementById('total-stats').innerText = `胜率: ${winRate}% (${winCount}赢 / ${loseCount}输)`;
@@ -348,7 +340,7 @@
                     <td class="p-4 text-right font-mono">${bet.stake.toFixed(2)}</td>
                     <td class="p-4 font-mono text-gray-500">${bet.odds.toFixed(2)}</td>
                     <td class="p-4 text-center">
-                        <input type="text" value="${bet.score}" oninput="updateScore(${bet.id}, this.value)" placeholder="点击输入比分" class="w-24 text-center text-xs font-bold font-mono bg-gray-50 border border-gray-200 rounded py-1 focus:outline-blue-500 focus:bg-white">
+                        <input type="text" value="${bet.score}" oninput="updateScore(${bet.id}, this.value)" placeholder="比分" class="w-20 text-center text-xs font-bold font-mono bg-gray-50 border border-gray-200 rounded py-1 focus:outline-blue-500 focus:bg-white">
                     </td>
                     <td class="p-4">
                         <select onchange="updateStatus(${bet.id}, this.value)" class="text-xs font-bold rounded p-1 border border-gray-200 focus:outline-none bg-white">
@@ -366,7 +358,6 @@
             recalculateTotals();
         }
 
-        // 默认显示普通玩法
         togglePlayType('普通玩法');
         renderDashboard();
     </script>

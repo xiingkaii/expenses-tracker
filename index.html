@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏆 2026 世界杯下注管理系统 (完整盘口结算版)</title>
+    <title>🏆 2026 世界杯下注管理系统 (支持数据导出版)</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
@@ -126,7 +126,9 @@
                 <h2 class="text-base font-bold text-gray-900 flex items-center gap-2">
                     <span class="w-2 h-4 bg-emerald-500 rounded-xs"></span>下注与赛果明细
                 </h2>
-                <span class="text-xs text-blue-600 font-medium">✏️ 可随时直接手改“比分”和“状态”</span>
+                <button onclick="exportToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-xs cursor-pointer flex items-center gap-1">
+                    📊 Export
+                </button>
             </div>
             
             <div class="overflow-x-auto">
@@ -154,13 +156,38 @@
     </main>
 
     <script>
-        let bets = JSON.parse(localStorage.getItem('wc_bets_v7')) || [];
-        let historyLogs = JSON.parse(localStorage.getItem('wc_history_logs_v7')) || [];
+        // 🛠️ 【核心防丢失机制】：终极无损数据搬家桥梁
+        let bets = [];
+        let historyLogs = [];
 
-        // 旧版本数据兼容迁移
-        if(bets.length === 0 && localStorage.getItem('wc_bets_v6')) {
-            bets = JSON.parse(localStorage.getItem('wc_bets_v6'));
-            historyLogs = JSON.parse(localStorage.getItem('wc_history_logs')) || [];
+        const dbKeys = ['wc_bets_v7', 'wc_bets_v6', 'wc_bets_v5', 'wc_bets_v4', 'wc_bets'];
+        for (let key of dbKeys) {
+            let oldData = localStorage.getItem(key);
+            if (oldData) {
+                bets = JSON.parse(oldData);
+                break; // 只要抓到最新的非空数据，立刻继承
+            }
+        }
+        
+        const logKeys = ['wc_history_logs_v7', 'wc_history_logs'];
+        for (let key of logKeys) {
+            let oldLogs = localStorage.getItem(key);
+            if (oldLogs) {
+                historyLogs = JSON.parse(oldLogs);
+                break;
+            }
+        }
+
+        // 规范化所有搬家过来的数据字段，确保不出错
+        bets.forEach(b => {
+            if(b.cleared === undefined) b.cleared = false;
+            if(b.clearedGroup === undefined) b.clearedGroup = '';
+        });
+
+        // 保存时统一锁定到最新的强力存储节点上
+        function saveToStorage() {
+            localStorage.setItem('wc_bets_v7', JSON.stringify(bets));
+            localStorage.setItem('wc_history_logs_v7', JSON.stringify(historyLogs));
         }
 
         const todayInput = new Date();
@@ -258,7 +285,7 @@
             const bet = bets.find(b => b.id === id);
             if (bet) {
                 bet.score = newScore;
-                localStorage.setItem('wc_bets_v7', JSON.stringify(bets));
+                saveToStorage();
                 recalculateTotals(); 
             }
         }
@@ -320,14 +347,27 @@
                     sum: currentWeeklySum
                 });
 
-                localStorage.setItem('wc_history_logs_v7', JSON.stringify(historyLogs));
                 saveAndRender();
             }
         }
 
         function saveAndRender() {
-            localStorage.setItem('wc_bets_v7', JSON.stringify(bets));
+            saveToStorage();
             renderDashboard();
+        }
+
+        function getBetPL(bet) {
+            let pl = 0;
+            if (bet.status === '全赢') {
+                pl = bet.type === '波胆/其他' ? (bet.stake * bet.odds) - bet.stake : bet.stake * bet.odds;
+            } else if (bet.status === '赢半') {
+                pl = bet.type === '波胆/其他' ? ((bet.stake * bet.odds) - bet.stake) / 2 : (bet.stake * bet.odds) / 2;
+            } else if (bet.status === '全输') {
+                pl = -bet.stake;
+            } else if (bet.status === '输半') {
+                pl = -bet.stake / 2;
+            }
+            return pl;
         }
 
         function recalculateTotals() {
@@ -341,20 +381,12 @@
             const targetTodayStr = selectedDateInput ? selectedDateInput.split('-')[1] + '/' + selectedDateInput.split('-')[2] : '';
 
             bets.forEach(bet => {
-                let pl = 0;
-                if (bet.status === '全赢') {
-                    pl = bet.type === '波胆/其他' ? (bet.stake * bet.odds) - bet.stake : bet.stake * bet.odds;
-                    winCount++;
-                } else if (bet.status === '赢半') {
-                    pl = bet.type === '波胆/其他' ? ((bet.stake * bet.odds) - bet.stake) / 2 : (bet.stake * bet.odds) / 2;
-                    winCount += 0.5;
-                } else if (bet.status === '全输') {
-                    pl = -bet.stake;
-                    loseCount++;
-                } else if (bet.status === '输半') {
-                    pl = -bet.stake / 2;
-                    loseCount += 0.5;
-                }
+                let pl = getBetPL(bet);
+
+                if (bet.status === '全赢') winCount++;
+                if (bet.status === '赢半') winCount += 0.5;
+                if (bet.status === '全输') loseCount++;
+                if (bet.status === '输半') loseCount += 0.5;
 
                 totalPl += pl;
                 if (!bet.cleared) weeklyPl += pl;
@@ -379,8 +411,70 @@
             document.getElementById('today-p&l').innerText = `${todayPl >= 0 ? '+' : '-'}RM ${Math.abs(todayPl).toFixed(2)}`;
             document.getElementById('today-p&l').className = `text-sm md:text-2xl font-black mt-1 md:mt-2 ${todayPl >= 0 ? 'text-green-600' : 'text-red-600'}`;
 
-            const totalCount = Math.ceil(winCount) + Math.ceil(loseCount);
             document.getElementById('total-stats').innerText = `已结注单汇总 (${winCount.toFixed(1)}赢 / ${loseCount.toFixed(1)}输)`;
+        }
+
+        // ⭐ 核心功能：智能生成 CSV 数据文件，完美对接 Google Sheet
+        function exportToCSV() {
+            if (bets.length === 0) {
+                alert('当前没有任何下注数据可供导出！');
+                return;
+            }
+
+            // 格式化包含逗号的单元格文本
+            const f = (val) => {
+                let str = (val === null || val === undefined) ? '' : String(val);
+                return '"' + str.replace(/"/g, '""') + '"';
+            };
+
+            // 表头定义
+            let csvRows = [];
+            csvRows.push(['比赛日期', '比赛场次', '玩法分类', '下注方向', '赌注本金(RM)', '下注赔率', '赛果比分', '结算状态', '实际损益(RM)', '对账清账状态'].map(f).join(','));
+
+            let renderedGroups = new Set();
+
+            // 按照前端展示流逆序或顺序输出
+            // 为了让 Excel 看起来顺眼，这里按照时间顺序倒推或顺推
+            for (let i = bets.length - 1; i >= 0; i--) {
+                const bet = bets[i];
+
+                // 如果遇到了清账线，在 Excel 里也强行插入一行隔离行
+                if (bet.cleared && bet.clearedGroup && !renderedGroups.has(bet.clearedGroup)) {
+                    const logObj = historyLogs.find(l => l.groupId === bet.clearedGroup);
+                    if (logObj) {
+                        csvRows.push([`========`, `${logObj.label.split('：')[0]} 周结算断层 ========`, ``, ``, ``, ``, ``, ``, `${logObj.sum.toFixed(2)}`, `已清帐归档`].map(f).join(','));
+                        renderedGroups.add(bet.clearedGroup);
+                    }
+                }
+
+                let pl = getBetPL(bet);
+                let plStr = bet.status === '未结算' ? '--' : (pl >= 0 ? '+' : '-') + Math.abs(pl).toFixed(2);
+
+                csvRows.push([
+                    bet.date,
+                    bet.match,
+                    bet.type,
+                    bet.direction,
+                    bet.stake.toFixed(2),
+                    bet.odds.toFixed(2),
+                    bet.score,
+                    bet.status,
+                    plStr,
+                    bet.cleared ? '已结清归档' : '待对账'
+                ].map(f).join(','));
+            }
+
+            // 加上 UTF-8 签名 (BOM) 防止 Excel 打开中文乱码
+            const csvContent = '\uFEFF' + csvRows.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `世界杯下注对账单_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         function renderDashboard() {
@@ -389,7 +483,7 @@
             
             let renderedGroups = new Set();
 
-            bets.forEach((bet, index) => {
+            bets.forEach((bet) => {
                 if (bet.cleared && bet.clearedGroup && !renderedGroups.has(bet.clearedGroup)) {
                     const logObj = historyLogs.find(l => l.groupId === bet.clearedGroup);
                     if (logObj) {
@@ -409,7 +503,6 @@
                 const tr = document.createElement('tr');
                 tr.className = bet.cleared ? 'bg-gray-50/60 hover:bg-gray-100 transition' : 'hover:bg-gray-50 transition';
                 
-                // ⭐ 核心注入：在这里完美加入了“赢半”和“输半”下拉菜单
                 const statuses = ['未结算', '全赢', '赢半', '全输', '输半', '走水'];
                 const statusOptions = statuses.map(opt => {
                     return `<option value="${opt}" ${bet.status === opt ? 'selected' : ''}>${opt}</option>`;
@@ -419,7 +512,6 @@
                     ? '<span class="text-gray-400 bg-gray-200/60 text-[10px] px-2 py-0.5 rounded-sm font-medium">已结清</span>' 
                     : '<span class="text-red-600 bg-red-50 text-[10px] px-2 py-0.5 rounded-sm font-bold">待对账</span>';
 
-                tbody.appendChild(tr);
                 tr.innerHTML = `
                     <td class="p-4 text-gray-500 font-medium font-mono">${bet.date}</td>
                     <td class="p-4 font-semibold text-gray-900">${bet.match}</td>
@@ -441,6 +533,7 @@
                         <button onclick="deleteBet(${bet.id})" class="text-red-500 hover:text-red-700 text-xs cursor-pointer">删除</button>
                     </td>
                 `;
+                tbody.appendChild(tr);
             });
 
             recalculateTotals();
